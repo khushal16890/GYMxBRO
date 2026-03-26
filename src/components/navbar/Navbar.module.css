@@ -1,0 +1,96 @@
+.navbar {
+  width: 100%;
+  height: 65px;
+  padding: 0 30px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  background: #0a0a0a;
+  border-bottom: 1px solid #1a1a1a;
+
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* LOGO */
+.logo {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 2px;
+
+  background: url('../../assets/stripe.jpeg');
+  background-size: cover;
+  background-position: center;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  /* subtle glow */
+  text-shadow: 0 0 10px rgba(255, 120, 0, 0.3);
+}
+
+/* RIGHT SIDE */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* BUTTONS */
+.btn {
+  padding: 7px 16px;
+  font-size: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+
+  background: white;
+  color: black;
+  border: none;
+
+  transition: 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+/* OUTLINE BUTTON */
+.outline {
+  background: transparent;
+  color: #ccc;
+  border: 1px solid #333;
+}
+
+.outline:hover {
+  color: white;
+  border: 1px solid white;
+}
+
+/* USER ICON */
+.userIcon {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  background: #151515;
+
+  color: white;
+  font-size: 16px;
+
+  border: 1px solid #2a2a2a;
+
+  transition: 0.2s;
+}
+
+.userIcon:hover {
+  background: #1f1f1f;
+  border-color: #ff7a00;
+}
