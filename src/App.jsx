@@ -14,7 +14,7 @@ import "./App.css";
 
 function App() {
   return (
-    <div className="layout">
+    <>
       <Navbar />
 
       <div className="main">
@@ -24,14 +24,14 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/programs" element={<Programs />} />
-            <Route path="/CustomPlan" element={<CustomPlan />} />
+            <Route path="/custom-plan" element={<CustomPlan />} />
             <Route path="/learn" element={<Learn />} />
             <Route path="/exercises" element={<Exercises />} />
             <Route path="/profile" element={<Profile />} />
           </Routes>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
