@@ -1,5 +1,5 @@
 import { useState } from "react";
-import AIPlan from "../components/customPlan/AIPlan";
+import AIPlan from "../components/AIPLAN/AIPlan";
 import styles from "./CustomPlan.module.css";
 
 export default function CustomPlan() {
