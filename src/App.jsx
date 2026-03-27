@@ -1,4 +1,4 @@
-import Navbar from "./components/navbar/Navbar";
+import Navbar from "./components/navbar/navbar";
 import Sidebar from "./components/navbar/Sidebar/Sidebar";
 
 import Home from "./pages/Home";
@@ -14,7 +14,10 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 
 import "./App.css";
+import VerifyEmail from "./pages/VerifyEmail";
 
+// inside <Routes>:
+<Route path="/verify-email" element={<VerifyEmail />} />
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
   return user ? children : <Navigate to="/login" />;

@@ -10,7 +10,13 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      // only treat them as logged in if email is verified
+      // Google accounts skip this — they're always verified
+      if (currentUser && !currentUser.emailVerified && currentUser.providerData[0]?.providerId === "password") {
+        setUser(null);
+      } else {
+        setUser(currentUser);
+      }
       setLoading(false);
     });
     return unsubscribe;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithPopup, updateProfile, sendEmailVerification, signOut } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import { useNavigate, Link } from "react-router-dom";
 import "./Login.css";
@@ -26,7 +26,9 @@ export default function Signup() {
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(user, { displayName: name });
-      navigate("/");
+      await sendEmailVerification(user);  // sends the verification email
+      await signOut(auth);               // sign them out until they verify
+      navigate("/verify-email");         // send to the verify screen
     } catch (err) {
       if (err.code === "auth/email-already-in-use") setError("Email already registered. Try logging in.");
       else if (err.code === "auth/weak-password") setError("Password must be at least 6 characters.");
