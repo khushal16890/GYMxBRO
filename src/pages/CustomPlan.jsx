@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AIPlan from "../components/AIPLAN/AIPlan";
 import styles from "./CustomPlan.module.css";
+import ManualPlan from "../components/manualPlan/ManualPlan";
 
 export default function CustomPlan() {
   const [activeTab, setActiveTab] = useState("ai");
@@ -29,11 +30,7 @@ export default function CustomPlan() {
 
       <div className={styles.content}>
         {activeTab === "ai" && <AIPlan />}
-        {activeTab === "manual" && (
-          <div className={styles.comingSoon}>
-            Manual plan builder — coming next.
-          </div>
-        )}
+        {activeTab === "manual" && <ManualPlan />}
       </div>
     </div>
   );
