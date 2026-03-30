@@ -1,6 +1,5 @@
 import Navbar from "./components/navbar/navbar";
 import Sidebar from "./components/navbar/Sidebar/Sidebar";
-
 import Home from "./pages/Home";
 import Programs from "./pages/Programs";
 import CustomPlan from "./pages/CustomPlan";
@@ -9,11 +8,8 @@ import Exercises from "./pages/Exercises";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
-
-import "./App.css";
 import VerifyEmail from "./pages/VerifyEmail";
 
 // inside <Routes>:

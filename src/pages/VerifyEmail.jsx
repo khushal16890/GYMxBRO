@@ -13,6 +13,7 @@ export default function VerifyEmail() {
     try {
       await sendEmailVerification(auth.currentUser);
       setResent(true);
+      
     } catch {
       setError("Could not resend email. Try again in a minute.");
     }
