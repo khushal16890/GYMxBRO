@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import styles from "./AIPlan.module.css";
-
+import { useAuth } from "../../context/AuthContext";
+import { db } from "../../firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 const DEFAULTS = {
   age: "", sex: "male", height: "", weight: "",
   goal: "muscle gain", experience: "beginner",
@@ -41,6 +44,9 @@ export default function AIPlan({ onPlanGenerated }) {
   const [popup, setPopup] = useState(null);
   const popupRef = useRef(null);
 
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
     setDbLoading(true);
     axios
@@ -133,6 +139,27 @@ Return ONLY valid JSON (no markdown, no text outside JSON):
     }
   };
 
+  const handleSavePlan = async () => {
+    if (!user) return alert("You must be logged in to save a plan.");
+    if (!plan) return;
+    setIsSaving(true);
+    try {
+      await setDoc(doc(db, "users", user.uid, "programs", "active"), {
+        planType: "ai",
+        days: plan.days,
+        summary: plan.summary,
+        createdAt: new Date().toISOString(),
+        completedDays: []
+      });
+      setTimeout(() => navigate("/programs"), 1000);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save plan");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className={styles.container}>
       {/* ── Header ── */}
@@ -219,6 +246,17 @@ Return ONLY valid JSON (no markdown, no text outside JSON):
           <div className={styles.summary}>
             <div className={styles.summaryIcon}>📋</div>
             <p>{plan.summary}</p>
+          </div>
+
+          <div className={styles.actionRow} style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+            <button 
+              className={styles.generateBtn} 
+              style={{ width: 'auto', padding: '12px 24px' }} 
+              onClick={handleSavePlan}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving..." : "Save to Programs"}
+            </button>
           </div>
 
           <p className={styles.clickHint}>

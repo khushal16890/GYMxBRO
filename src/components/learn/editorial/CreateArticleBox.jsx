@@ -27,6 +27,7 @@ export default function CreateArticleBox() {
         preview: preview.trim() || content.trim().slice(0, 100) + '...',
         content: content.trim(),
         author: user.name || user.displayName || 'Editor',
+        authorUid: user.uid,
         tags,
         likes: [],
         comments: [],

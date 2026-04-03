@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import styles from "./ManualPlan.module.css";
-
+import { useAuth } from "../../context/AuthContext";
+import { db } from "../../firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 // Free public-domain exercise dataset — 800+ exercises, no API key, no rate limit
 const EXERCISES_URL =
   "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
@@ -17,6 +20,10 @@ export default function ManualPlan() {
   const [saved, setSaved] = useState(false);
   const [plan, setPlan] = useState([{ day: "Day 1", exercises: [] }]);
   const [activeDay, setActiveDay] = useState(0);
+
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [isSaving, setIsSaving] = useState(false);
 
   const dropdownRef = useRef(null);
 
@@ -126,10 +133,24 @@ export default function ManualPlan() {
     setActiveDay(Math.min(activeDay, updated.length - 1));
   };
 
-  const savePlan = () => {
-    console.log("Plan saved:", plan);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const savePlan = async () => {
+    if (!user) return alert("You must be logged in to save a plan.");
+    setIsSaving(true);
+    try {
+      await setDoc(doc(db, "users", user.uid, "programs", "active"), {
+        planType: "manual",
+        days: plan,
+        createdAt: new Date().toISOString(),
+        completedDays: []
+      });
+      setSaved(true);
+      setTimeout(() => navigate("/programs"), 1000);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save plan");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const showDropdown = search.trim().length > 0 && !loadingExercises;
@@ -151,9 +172,9 @@ export default function ManualPlan() {
         <button
           className={styles.saveBtn}
           onClick={savePlan}
-          disabled={plan.every((d) => d.exercises.length === 0)}
+          disabled={plan.every((d) => d.exercises.length === 0) || isSaving}
         >
-          {saved ? "✓ Saved!" : "Save Plan"}
+          {isSaving ? "Saving..." : saved ? "✓ Saved!" : "Save Plan"}
         </button>
       </div>
 
