@@ -173,10 +173,10 @@ export default function CommunityFeed() {
           {/* Sidebar */}
           <aside className={styles.sidebarColumn}>
             <h3 className={styles.sidebarTitle}>Community Rules</h3>
-            <p className={styles.sidebarTip}>🏋️ Stay on topic — fitness, nutrition, and wellness only.</p>
-            <p className={styles.sidebarTip}>✅ Be supportive. Constructive feedback only.</p>
-            <p className={styles.sidebarTip}>🚫 No spam, self-promotion, or offensive content.</p>
-            <p className={styles.sidebarTip}>📌 Tag your posts to help others find them.</p>
+            <p className={styles.sidebarTip}> Stay on topic — fitness, nutrition, and wellness only.</p>
+            <p className={styles.sidebarTip}> Be supportive. Constructive feedback only.</p>
+            <p className={styles.sidebarTip}> No spam, self-promotion, or offensive content.</p>
+            <p className={styles.sidebarTip}>📌\ Tag your posts to help others find them.</p>
           </aside>
         </div>
       </div>
