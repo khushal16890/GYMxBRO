@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
-import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDocs, updateDoc, deleteDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import styles from "./Programs.module.css";
 
@@ -15,7 +15,8 @@ export default function Programs() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [program, setProgram] = useState(null);
+  const [programs, setPrograms] = useState([]);
+  const [selectedProgram, setSelectedProgram] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Workout state
@@ -27,24 +28,24 @@ export default function Programs() {
 
   useEffect(() => {
     if (!user) return;
-    const fetchProgram = async () => {
+    const fetchPrograms = async () => {
       try {
-        const docRef = doc(db, "users", user.uid, "programs", "active");
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const data = snap.data();
-          setProgram(data);
-          // Determine active day
-          const completedCount = data.completedDays?.length || 0;
-          setActiveDayIdx(completedCount);
-        }
+        const querySnapshot = await getDocs(collection(db, "users", user.uid, "programs"));
+        const fetched = [];
+        querySnapshot.forEach((docSnap) => {
+          fetched.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        
+        // Sort newest first
+        fetched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setPrograms(fetched);
       } catch (err) {
-        console.error("Failed to load program", err);
+        console.error("Failed to load programs", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchProgram();
+    fetchPrograms();
   }, [user]);
 
   useEffect(() => {
@@ -58,36 +59,106 @@ export default function Programs() {
     return () => clearInterval(timerRef.current);
   }, [workoutActive]);
 
+  const handleDeletePlan = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this plan?")) return;
+    try {
+      await deleteDoc(doc(db, "users", user.uid, "programs", id));
+      setPrograms(prev => prev.filter(p => p.id !== id));
+      if (selectedProgram && selectedProgram.id === id) {
+        setSelectedProgram(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete plan", err);
+      alert("Could not delete the plan at this time.");
+    }
+  };
+
+  const openProgram = (prog) => {
+    setSelectedProgram(prog);
+    const completedCount = prog.completedDays?.length || 0;
+    setActiveDayIdx(completedCount);
+  };
+
+  const closeProgram = () => {
+    setSelectedProgram(null);
+    setWorkoutActive(false);
+  };
+
   if (loading) {
-    return <div className={styles.loading}>Loading your program...</div>;
+    return <div className={styles.loading}>Loading your programs...</div>;
   }
 
-  if (!program) {
+  // LIST VIEW: Showing all saved programs
+  if (!selectedProgram) {
     return (
-      <div className={styles.emptyState}>
-        <div className={styles.emptyIcon}>🏋️</div>
-        <h2>No Active Program</h2>
-        <p>You need to build or generate a plan first to start tracking.</p>
-        <button className={styles.primaryBtn} onClick={() => navigate("/custom-plan")}>
-          Go to Custom Plan
-        </button>
+      <div className={styles.container}>
+        <header className={styles.dashHeader}>
+          <h1 className={styles.dashTitle}>My Programs</h1>
+          <p className={styles.dashSummary}>Select a program to start your workout.</p>
+        </header>
+
+        {programs.length === 0 ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>🏋️</div>
+            <h2>No Active Programs</h2>
+            <p>You need to build or generate a plan first to start tracking.</p>
+            <button className={styles.primaryBtn} onClick={() => navigate("/custom-plan")}>
+              Go to Custom Plan
+            </button>
+          </div>
+        ) : (
+          <div className={styles.calendarGrid}>
+            {programs.map((prog) => (
+              <div 
+                key={prog.id} 
+                className={`${styles.dayCard} ${styles.programCardHover}`}
+                onClick={() => openProgram(prog)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className={styles.dayTop}>
+                  <h3 className={styles.dayTitle} style={{ fontSize: '24px' }}>
+                    {prog.name || (prog.planType === 'ai' ? 'AI Program' : 'Manual Plan')}
+                  </h3>
+                  <span className={styles.dayBadge}>
+                    {prog.days?.length || 0} Days
+                  </span>
+                </div>
+                <p className={styles.daySubtitle} style={{ marginBottom: '12px' }}>
+                  {prog.summary ? (prog.summary.substring(0, 60) + '...') : `${(prog.completedDays || []).length} workouts completed`}
+                </p>
+                <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button className={styles.startBtn} style={{ width: 'auto', padding: '8px 16px', fontSize: '12px' }}>
+                    View Plan
+                  </button>
+                  <button 
+                    onClick={(e) => handleDeletePlan(prog.id, e)}
+                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', padding: '8px' }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 
-  const weekFinished = activeDayIdx >= program.days.length;
+  // DETAILED VIEW (Tracker dashboard for a specific program)
+  const weekFinished = activeDayIdx >= selectedProgram.days.length;
 
   const startWorkout = (dayIdx) => {
     setActiveDayIdx(dayIdx);
     setWorkoutActive(true);
     setElapsedTime(0);
     
-    // Initialize workout data structure
     const initialData = {};
-    const exercises = program.days[dayIdx].exercises || [];
+    const exercises = selectedProgram.days[dayIdx].exercises || [];
     exercises.forEach((ex, exIdx) => {
       initialData[exIdx] = [];
-      const numSets = parseInt(ex.sets) || 3; // Default to 3 if parsing fails
+      const numSets = parseInt(ex.sets) || 3;
       for (let i = 0; i < numSets; i++) {
         initialData[exIdx].push({ reps: "", weight: "", done: false });
       }
@@ -115,25 +186,28 @@ export default function Programs() {
     if (!window.confirm("Are you sure you want to finish this workout?")) return;
     
     try {
-      // 1. Log the workout
       const logData = {
         date: serverTimestamp(),
-        day: program.days[activeDayIdx].day,
-        focus: program.days[activeDayIdx].focus || "",
+        programId: selectedProgram.id,
+        programName: selectedProgram.name || "Program",
+        day: selectedProgram.days[activeDayIdx].day,
+        focus: selectedProgram.days[activeDayIdx].focus || "",
         durationSeconds: elapsedTime,
-        exercises: program.days[activeDayIdx].exercises.map((ex, i) => ({
+        exercises: selectedProgram.days[activeDayIdx].exercises.map((ex, i) => ({
           name: ex.name,
           sets: workoutData[i]
         }))
       };
       await addDoc(collection(db, "users", user.uid, "workoutLogs"), logData);
 
-      // 2. Mark day as completed
-      const newCompletedDays = [...(program.completedDays || []), activeDayIdx];
-      const docRef = doc(db, "users", user.uid, "programs", "active");
+      const newCompletedDays = [...(selectedProgram.completedDays || []), activeDayIdx];
+      const docRef = doc(db, "users", user.uid, "programs", selectedProgram.id);
       await updateDoc(docRef, { completedDays: newCompletedDays });
       
-      setProgram(prev => ({ ...prev, completedDays: newCompletedDays }));
+      const updatedProg = { ...selectedProgram, completedDays: newCompletedDays };
+      setSelectedProgram(updatedProg);
+      setPrograms(prev => prev.map(p => p.id === selectedProgram.id ? updatedProg : p));
+      
       setActiveDayIdx(newCompletedDays.length);
       setWorkoutActive(false);
       setElapsedTime(0);
@@ -145,11 +219,14 @@ export default function Programs() {
   };
 
   const resetWeek = async () => {
-    const defaultData = { completedDays: [] };
     try {
-      const docRef = doc(db, "users", user.uid, "programs", "active");
-      await updateDoc(docRef, defaultData);
-      setProgram(prev => ({ ...prev, completedDays: [] }));
+      const docRef = doc(db, "users", user.uid, "programs", selectedProgram.id);
+      await updateDoc(docRef, { completedDays: [] });
+      
+      const updatedProg = { ...selectedProgram, completedDays: [] };
+      setSelectedProgram(updatedProg);
+      setPrograms(prev => prev.map(p => p.id === selectedProgram.id ? updatedProg : p));
+      
       setActiveDayIdx(0);
     } catch (err) {
       console.error("Failed to reset week", err);
@@ -157,7 +234,7 @@ export default function Programs() {
   };
 
   if (workoutActive) {
-    const day = program.days[activeDayIdx];
+    const day = selectedProgram.days[activeDayIdx];
     return (
       <div className={styles.container}>
         <div className={styles.trackerHeader}>
@@ -206,7 +283,7 @@ export default function Programs() {
                         </td>
                         <td>
                           <input 
-                            className={styles.setVal} 
+                            className={set.done ? styles.setValDisabled : styles.setVal} 
                             placeholder="0" type="number" 
                             value={set.reps}
                             onChange={(e) => handleSetUpdate(i, sIdx, "reps", e.target.value)}
@@ -239,12 +316,18 @@ export default function Programs() {
     );
   }
 
-  // Dashboard View
+  // Dashboard View (within a specific program)
   return (
     <div className={styles.container}>
-      <header className={styles.dashHeader}>
-        <h1 className={styles.dashTitle}>Active Program</h1>
-        {program.summary && <p className={styles.dashSummary}>{program.summary}</p>}
+      <header className={styles.dashHeader} style={{ position: 'relative' }}>
+        <button 
+          onClick={closeProgram}
+          style={{ background: 'transparent', border: '1px solid #2a2a2e', color: '#9999a8', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', marginBottom: '20px' }}
+        >
+          ← Back to Library
+        </button>
+        <h1 className={styles.dashTitle}>{selectedProgram.name || "Active Program"}</h1>
+        {selectedProgram.summary && <p className={styles.dashSummary}>{selectedProgram.summary}</p>}
       </header>
 
       {weekFinished ? (
@@ -258,8 +341,8 @@ export default function Programs() {
         </div>
       ) : (
         <div className={styles.calendarGrid}>
-          {program.days.map((day, i) => {
-            const isCompleted = (program.completedDays || []).includes(i);
+          {selectedProgram.days.map((day, i) => {
+            const isCompleted = (selectedProgram.completedDays || []).includes(i);
             const isCurrent = i === activeDayIdx;
             const isLocked = i > activeDayIdx;
 

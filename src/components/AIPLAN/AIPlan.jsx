@@ -3,7 +3,7 @@ import axios from "axios";
 import styles from "./AIPlan.module.css";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 const DEFAULTS = {
   age: "", sex: "male", height: "", weight: "",
@@ -144,8 +144,9 @@ Return ONLY valid JSON (no markdown, no text outside JSON):
     if (!plan) return;
     setIsSaving(true);
     try {
-      await setDoc(doc(db, "users", user.uid, "programs", "active"), {
+      await addDoc(collection(db, "users", user.uid, "programs"), {
         planType: "ai",
+        name: `AI Plan - ${new Date().toLocaleDateString()}`,
         days: plan.days,
         summary: plan.summary,
         createdAt: new Date().toISOString(),

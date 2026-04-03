@@ -3,7 +3,7 @@ import axios from "axios";
 import styles from "./ManualPlan.module.css";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 // Free public-domain exercise dataset — 800+ exercises, no API key, no rate limit
 const EXERCISES_URL =
@@ -118,6 +118,10 @@ export default function ManualPlan() {
   };
 
   const addDay = () => {
+    if (plan.length >= 7) {
+      alert("Maximum 7 days allowed.");
+      return;
+    }
     const newPlan = [
       ...plan,
       { day: `Day ${plan.length + 1}`, exercises: [] },
@@ -137,8 +141,9 @@ export default function ManualPlan() {
     if (!user) return alert("You must be logged in to save a plan.");
     setIsSaving(true);
     try {
-      await setDoc(doc(db, "users", user.uid, "programs", "active"), {
+      await addDoc(collection(db, "users", user.uid, "programs"), {
         planType: "manual",
+        name: `Manual Plan - ${new Date().toLocaleDateString()}`,
         days: plan,
         createdAt: new Date().toISOString(),
         completedDays: []

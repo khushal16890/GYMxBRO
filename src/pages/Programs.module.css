@@ -6,8 +6,8 @@
   background: #0d0d0f;
   color: #f0f0f0;
   font-family: 'DM Sans', sans-serif;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .loading {
@@ -119,6 +119,12 @@
   letter-spacing: 1px;
   margin: 0;
   color: #f0f0f0;
+}
+
+.programCardHover:hover {
+  transform: translateY(-4px);
+  border-color: #e8ff47;
+  box-shadow: 0 10px 40px rgba(232, 255, 71, 0.1);
 }
 
 .dayBadge {

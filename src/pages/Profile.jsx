@@ -14,11 +14,11 @@ export default function Profile() {
   const [newName, setNewName] = useState('');
   const [updatingMode, setUpdatingMode] = useState(false);
   
-  const [activeTab, setActiveTab] = useState('program'); // 'program', 'posts', 'comments'
+  const [activeTab, setActiveTab] = useState('programs'); // 'programs', 'posts', 'comments'
   
   const [myPosts, setMyPosts] = useState([]);
   const [myComments, setMyComments] = useState([]);
-  const [myProgram, setMyProgram] = useState(null);
+  const [myPrograms, setMyPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Initialize newName when user is available
@@ -37,14 +37,15 @@ export default function Profile() {
       try {
         let fetchedPosts = [];
         let fetchedComments = [];
-        let fetchedProgram = null;
+        let fPrograms = [];
 
-        // 1. Fetch Active Program
-        const programRef = doc(db, 'users', user.uid, 'programs', 'active');
-        const programSnap = await getDoc(programRef);
-        if (programSnap.exists()) {
-          fetchedProgram = programSnap.data();
-        }
+        // 1. Fetch ALL Programs
+        const programsRef = collection(db, 'users', user.uid, 'programs');
+        const programsSnap = await getDocs(programsRef);
+        programsSnap.forEach(d => {
+          fPrograms.push({ id: d.id, ...d.data() });
+        });
+        fPrograms.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         // 2. Fetch Community Posts by this user
         const qPosts = query(collection(db, 'community_posts'), where('user.uid', '==', user.uid));
@@ -106,7 +107,7 @@ export default function Profile() {
         fetchedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         fetchedComments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        setMyProgram(fetchedProgram);
+        setMyPrograms(fPrograms);
         setMyPosts(fetchedPosts);
         setMyComments(fetchedComments);
       } catch (error) {
@@ -224,8 +225,8 @@ export default function Profile() {
       {/* Stats Row */}
       <div className={styles.statsRow}>
         <div className={styles.statCard}>
-          <p className={styles.statValue}>{myProgram ? '1' : '0'}</p>
-          <p className={styles.statLabel}>Active Program</p>
+          <p className={styles.statValue}>{myPrograms.length}</p>
+          <p className={styles.statLabel}>Saved Programs</p>
         </div>
         <div className={styles.statCard}>
           <p className={styles.statValue}>{myPosts.length}</p>
@@ -240,10 +241,10 @@ export default function Profile() {
       {/* Tabs */}
       <div className={styles.tabs}>
         <button 
-          className={`${styles.tabBtn} ${activeTab === 'program' ? styles.tabBtnActive : ''}`}
-          onClick={() => setActiveTab('program')}
+          className={`${styles.tabBtn} ${activeTab === 'programs' ? styles.tabBtnActive : ''}`}
+          onClick={() => setActiveTab('programs')}
         >
-          My Program
+          My Programs
         </button>
         <button 
           className={`${styles.tabBtn} ${activeTab === 'posts' ? styles.tabBtnActive : ''}`}
@@ -263,40 +264,42 @@ export default function Profile() {
       <div className={styles.feedList}>
         {loading ? (
           <div className={styles.loadingSpinner}>Loading your data...</div>
-        ) : activeTab === 'program' ? (
-          myProgram ? (
-            <div className={styles.programCard}>
-              <div className={styles.cardHeader}>
-                <span className={styles.cardType}>Active Program</span>
-                <span className={styles.cardDate}>
-                  Started {new Date(myProgram.createdAt).toLocaleDateString()}
-                </span>
+        ) : activeTab === 'programs' ? (
+          myPrograms.length > 0 ? (
+            myPrograms.map(prog => (
+              <div key={prog.id} className={styles.programCard}>
+                <div className={styles.cardHeader}>
+                  <span className={styles.cardType}>Program</span>
+                  <span className={styles.cardDate}>
+                    Saved {new Date(prog.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <h3 className={styles.programTitle}>
+                  {prog.name || (prog.planType === 'ai' ? 'AI Program' : 'Manual Plan')}
+                </h3>
+                {prog.summary && (
+                  <p className={styles.programSummary}>{prog.summary}</p>
+                )}
+                <div className={styles.programStats}>
+                  <span className={styles.programStat}>
+                    <strong>{prog.days?.length || 0}</strong> Days / Wk
+                  </span>
+                  <span className={styles.programStat}>
+                    <strong>{prog.completedDays?.length || 0}</strong> Workouts Done
+                  </span>
+                </div>
+                <button 
+                  className={styles.btnPrimary}
+                  onClick={() => navigate('/programs')}
+                >
+                  Go to Tracker Library
+                </button>
               </div>
-              <h3 className={styles.programTitle}>
-                {myProgram.planType === 'ai' ? 'AI Generated Plan' : 'Custom Manual Plan'}
-              </h3>
-              {myProgram.summary && (
-                <p className={styles.programSummary}>{myProgram.summary}</p>
-              )}
-              <div className={styles.programStats}>
-                <span className={styles.programStat}>
-                  <strong>{myProgram.days?.length || 0}</strong> Days / Wk
-                </span>
-                <span className={styles.programStat}>
-                  <strong>{myProgram.completedDays?.length || 0}</strong> Workouts Done
-                </span>
-              </div>
-              <button 
-                className={styles.btnPrimary}
-                onClick={() => navigate('/programs')}
-              >
-                Go to Tracker
-              </button>
-            </div>
+            ))
           ) : (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>🏋️</div>
-              <p className={styles.emptyText}>You don&#39;t have an active program.</p>
+              <p className={styles.emptyText}>You don&#39;t have any saved programs yet.</p>
               <button 
                 className={styles.btnPrimary}
                 style={{ marginTop: '20px' }}
