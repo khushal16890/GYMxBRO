@@ -81,9 +81,9 @@
 
 /* ACTIVE ITEM */
 .active {
-  background: rgba(255, 122, 0, 0.08);
+  background: rgba(232, 255, 71, 0.08);
   color: #ffffff;
-  border-left: 3px solid #ff7a00;
+  border-left: 3px solid #e8ff47;
 }
 
 /* ICON */
@@ -99,7 +99,7 @@
 
 .item:hover .icon,
 .active .icon {
-  color: #ff7a00;
+  color: #e8ff47;
 }
 
 /* TEXT */

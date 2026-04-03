@@ -7,7 +7,7 @@ const EXERCISES_URL =
 const IMG_BASE =
   "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
 
-const PER_PAGE = 12;
+const PER_PAGE = 873;
 
 const MUSCLES = [
   "All", "abdominals", "abductors", "adductors", "biceps", "calves",
@@ -51,14 +51,19 @@ export default function Exercises() {
 
   // Filter
   const filtered = allEx.filter((ex) => {
-    const matchSearch =
-      !search ||
-      ex.name?.toLowerCase().includes(search.toLowerCase()) ||
-      ex.muscles?.some((m) => m.toLowerCase().includes(search.toLowerCase()));
-    const matchMuscle =
-      muscle === "All" ||
-      ex.muscles?.some((m) => m.toLowerCase() === muscle.toLowerCase()) ||
-      ex.muscles_secondary?.some((m) => m.toLowerCase() === muscle.toLowerCase());
+ const matchSearch =
+  !search ||
+  ex.name?.toLowerCase().includes(search.toLowerCase()) ||
+  ex.primaryMuscles?.some((m) => m.toLowerCase().includes(search.toLowerCase()));
+
+const normalize = (str) => str.toLowerCase().replace(/\s|_/g, "");
+
+const matchMuscle =
+  muscle === "All" ||
+  ex.primaryMuscles?.some((m) =>
+    normalize(m).includes(normalize(muscle))
+  );
+
     const matchCat =
       category === "All" ||
       ex.category?.toLowerCase() === category.toLowerCase();

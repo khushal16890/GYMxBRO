@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createUserWithEmailAndPassword, signInWithPopup, updateProfile, sendEmailVerification, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import { useNavigate, Link } from "react-router-dom";
 import "./Login.css";
