@@ -5,6 +5,10 @@ import { db, storage } from '../../../firebase';
 import { useAuth } from '../../../context/AuthContext';
 import styles from "../../../pages/learn.module.css";
 
+const MAX_POST_LENGTH = 5000;
+const MAX_TAGS = 10;
+const POST_COOLDOWN_MS = 3000;
+
 export default function CreatePostBox({ onPost }) {
   const { user } = useAuth();
   const [text, setText]         = useState('');
@@ -13,10 +17,24 @@ export default function CreatePostBox({ onPost }) {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
+  const lastPostRef = useRef(0);
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Only JPEG, PNG, WebP, and GIF images are allowed.');
+      return;
+    }
+
+    const validExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+    if (!validExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
+      alert('Invalid file extension.');
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       alert('Image must be under 5MB.');
       return;
@@ -34,10 +52,21 @@ export default function CreatePostBox({ onPost }) {
   const handleSubmit = async () => {
     if (!text.trim() || !user) return;
 
+    if (text.length > MAX_POST_LENGTH) {
+      alert(`Post must be under ${MAX_POST_LENGTH} characters.`);
+      return;
+    }
+
+    if (Date.now() - lastPostRef.current < POST_COOLDOWN_MS) {
+      alert('Please wait before posting again.');
+      return;
+    }
+
     const tags = tagInput
       .split(',')
       .map(t => t.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .slice(0, MAX_TAGS);
 
     setLoading(true);
     try {
@@ -68,6 +97,7 @@ export default function CreatePostBox({ onPost }) {
       setText('');
       setTagInput('');
       removeImage();
+      lastPostRef.current = Date.now();
     } catch (err) {
       console.error('Post failed', err);
     } finally {

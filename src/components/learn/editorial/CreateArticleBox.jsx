@@ -22,6 +22,19 @@ export default function CreateArticleBox() {
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Only JPEG, PNG, WebP, and GIF images are allowed.');
+      return;
+    }
+
+    const validExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+    if (!validExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
+      alert('Invalid file extension.');
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       alert('Image must be under 5MB.');
       return;

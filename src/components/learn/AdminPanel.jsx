@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import styles from "../../pages/learn.module.css";
+
+const ROLE_HIERARCHY = { user: 0, editor: 1, admin: 2 };
 
 export default function AdminPanel() {
   const { user } = useAuth();
@@ -10,7 +12,6 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Only fetch if admin
     if (user?.role !== 'admin') {
       setLoading(false);
       return;
@@ -29,7 +30,42 @@ export default function AdminPanel() {
   }, [user]);
 
   const handleRoleChange = async (userId, newRole) => {
+    // Prevent self-demotion/promotion
+    if (userId === user.uid) {
+      alert("You cannot change your own role.");
+      return;
+    }
+
+    const targetUser = users.find(u => u.id === userId);
+    const oldRole = targetUser?.role || 'user';
+
+    // Prevent assigning roles above your own
+    if (ROLE_HIERARCHY[newRole] > ROLE_HIERARCHY[user.role]) {
+      alert("You cannot assign a role higher than your own.");
+      return;
+    }
+
+    // Confirmation for sensitive changes
+    if (newRole === 'admin') {
+      if (!window.confirm(`Grant ADMIN access to ${targetUser?.name || targetUser?.email}? This gives them full control.`)) return;
+    }
+    if (oldRole === 'admin' && newRole !== 'admin') {
+      if (!window.confirm(`Remove ADMIN access from ${targetUser?.name || targetUser?.email}?`)) return;
+    }
+
     try {
+      // Audit log
+      await addDoc(collection(db, 'audit_logs'), {
+        action: 'role_change',
+        changedBy: user.uid,
+        changedByName: user.displayName || user.email,
+        targetUser: userId,
+        targetName: targetUser?.name || targetUser?.email || 'Unknown',
+        oldRole,
+        newRole,
+        timestamp: new Date().toISOString()
+      });
+
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, { role: newRole });
     } catch (e) {
@@ -63,7 +99,7 @@ export default function AdminPanel() {
           Admin Dashboard
         </h2>
         <p className={styles.detailMetaItem} style={{ border: 'none', margin: '8px 0 0' }}>
-          Manage user permissions safely. "Admin" users can change roles. "Editor" users can write Editorial articles.
+          Manage user permissions safely. All role changes are logged for audit purposes.
         </p>
       </div>
 
@@ -93,7 +129,7 @@ export default function AdminPanel() {
                       className={styles.sortSelect}
                       value={u.role || 'user'}
                       onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                      disabled={u.uid === user.uid} // prevent demoting self
+                      disabled={u.uid === user.uid}
                       style={{ 
                         opacity: u.uid === user.uid ? 0.5 : 1, 
                         border: u.role === 'admin' ? '1px solid var(--learn-red)' : u.role === 'editor' ? '1px solid var(--learn-accent)' : '1px solid var(--learn-border)' 

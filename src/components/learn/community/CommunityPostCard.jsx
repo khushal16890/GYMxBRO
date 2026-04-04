@@ -14,7 +14,7 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export default function CommunityPostCard({ post, currentUser, onUpvote, onComment }) {
+export default function CommunityPostCard({ post, currentUser, onUpvote, onComment, onDelete }) {
   const [showComments, setShowComments] = useState(false);
 
   // upvotes array stores Firebase UIDs as strings on the backend
@@ -72,6 +72,17 @@ export default function CommunityPostCard({ post, currentUser, onUpvote, onComme
         >
           💬 {post.comments?.length ?? 0} {showComments ? '▲' : '▼'}
         </button>
+
+        {currentUser && onDelete && (post.user?.uid === currentUser.uid || currentUser.role === 'admin') && (
+          <button
+            className={styles.commentToggle}
+            onClick={() => onDelete(post._id)}
+            style={{ marginLeft: 'auto', color: 'var(--learn-red)' }}
+            title="Delete post"
+          >
+            🗑 Delete
+          </button>
+        )}
       </div>
 
       {showComments && (

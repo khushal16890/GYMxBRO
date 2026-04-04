@@ -10,7 +10,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!isMounted) return;
+
       // only treat them as logged in if email is verified
       // Google accounts skip this — they're always verified
       if (currentUser && !currentUser.emailVerified && currentUser.providerData[0]?.providerId === "password") {
@@ -20,6 +24,9 @@ export function AuthProvider({ children }) {
         try {
           const userDocRef = doc(db, 'users', currentUser.uid);
           const userDoc = await getDoc(userDocRef);
+
+          if (!isMounted) return; // Guard after async
+
           let role = "user";
           
           if (!userDoc.exists()) {
@@ -35,20 +42,26 @@ export function AuthProvider({ children }) {
             role = userDoc.data().role || "user";
           }
           
+          if (!isMounted) return; // Guard after second async
+
           Object.defineProperty(currentUser, 'role', { value: role, writable: true, configurable: true });
           setUser(currentUser);
         } catch (err) {
           console.error("Failed to fetch user role", err);
-          setUser(currentUser); // fallback
+          if (isMounted) setUser(currentUser); // fallback
         } finally {
-          setLoading(false);
+          if (isMounted) setLoading(false);
         }
       } else {
         setUser(null);
         setLoading(false);
       }
     });
-    return unsubscribe;
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const logout = () => signOut(auth);

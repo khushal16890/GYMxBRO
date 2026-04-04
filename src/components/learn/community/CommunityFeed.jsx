@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, onSnapshot, query, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { useAuth } from '../../../context/AuthContext';
 import styles from "../../../pages/learn.module.css";
@@ -58,6 +58,10 @@ export default function CommunityFeed() {
 
   const handleComment = async (postId, text) => {
     if (!user) return;
+    if (text.length > 1000) {
+      alert('Comment must be under 1000 characters.');
+      return;
+    }
     try {
       const postRef = doc(db, 'community_posts', postId);
       const commentData = {
@@ -74,6 +78,22 @@ export default function CommunityFeed() {
       });
     } catch (err) {
       console.error('Comment failed', err);
+    }
+  };
+
+  const handleDelete = async (postId) => {
+    const post = posts.find(p => p._id === postId);
+    if (!post) return;
+    if (post.user?.uid !== user?.uid && user?.role !== 'admin') {
+      alert('You can only delete your own posts.');
+      return;
+    }
+    if (!window.confirm('Are you sure you want to delete this post?')) return;
+    try {
+      await deleteDoc(doc(db, 'community_posts', postId));
+    } catch (err) {
+      console.error('Delete failed', err);
+      alert('Failed to delete post.');
     }
   };
 
@@ -165,6 +185,7 @@ export default function CommunityFeed() {
                   currentUser={user}
                   onUpvote={handleUpvote}
                   onComment={handleComment}
+                  onDelete={handleDelete}
                 />
               ))
             )}
