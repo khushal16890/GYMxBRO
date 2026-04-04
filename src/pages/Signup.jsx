@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithPopup, updateProfile, sendEmailVerification, signOut } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import { useNavigate, Link } from "react-router-dom";
 import "./Login.css";
@@ -13,35 +13,70 @@ const GoogleIcon = () => (
   </svg>
 );
 
+const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const validatePassword = (password) => {
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const isLongEnough = password.length >= 8;
+  return { valid: hasUpperCase && hasLowerCase && hasNumbers && isLongEnough, hasUpperCase, hasLowerCase, hasNumbers, isLongEnough };
+};
+
 export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSignup = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (!validateEmail(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.valid) {
+      const missing = [];
+      if (!pwCheck.isLongEnough) missing.push("at least 8 characters");
+      if (!pwCheck.hasUpperCase) missing.push("an uppercase letter");
+      if (!pwCheck.hasLowerCase) missing.push("a lowercase letter");
+      if (!pwCheck.hasNumbers) missing.push("a number");
+      setError(`Password needs: ${missing.join(", ")}.`);
+      return;
+    }
+
+    setIsLoading(true);
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(user, { displayName: name });
-      await sendEmailVerification(user);  // sends the verification email
-      await signOut(auth);               // sign them out until they verify
-      navigate("/verify-email");         // send to the verify screen
+      await sendEmailVerification(user);
+      await signOut(auth);
+      navigate("/verify-email");
     } catch (err) {
       if (err.code === "auth/email-already-in-use") setError("Email already registered. Try logging in.");
-      else if (err.code === "auth/weak-password") setError("Password must be at least 6 characters.");
+      else if (err.code === "auth/weak-password") setError("Password must be at least 8 characters with uppercase, lowercase, and numbers.");
+      else if (err.code === "auth/invalid-email") setError("Please enter a valid email address.");
       else setError("Signup failed. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogle = async () => {
+    setIsLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
       navigate("/");
     } catch {
       setError("Google sign-in failed.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,9 +96,11 @@ export default function Signup() {
           <input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
 
           <label className="auth-label">Password</label>
-          <input type="password" placeholder="Min. 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <input type="password" placeholder="Min. 8 chars, upper, lower & number" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
-          <button type="submit" className="auth-btn">Create Account</button>
+          <button type="submit" className="auth-btn" disabled={isLoading}>
+            {isLoading ? "Creating Account..." : "Create Account"}
+          </button>
         </form>
 
         <div className="auth-divider">
@@ -72,7 +109,7 @@ export default function Signup() {
           <div className="auth-divider-line"></div>
         </div>
 
-        <button className="auth-google" onClick={handleGoogle}>
+        <button className="auth-google" onClick={handleGoogle} disabled={isLoading}>
           <GoogleIcon /> Continue with Google
         </button>
 

@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // ── Helper Functions ──
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    function isEditor() {
+      return isAuthenticated() && getUserRole() == 'editor';
+    }
+    
+    function isEditorOrAdmin() {
+      return isAdmin() || isEditor();
+    }
+
+    // ── Users Collection ──
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId)
+                    && (request.resource.data.role == 'user' || !('role' in request.resource.data));
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role)
+                    || isAdmin();
+      allow delete: if isAdmin();
+      
+      match /{subcollection}/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ── Editorial Articles ──
+    match /editorial_articles/{articleId} {
+      allow read: if true;
+      allow create, delete: if isEditorOrAdmin();
+      allow update: if isEditorOrAdmin() 
+                    || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'likes', 'upvotes']));
+    }
+
+    // ── Community Posts ──
+    match /community_posts/{postId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.user.uid == request.auth.uid);
+      allow update: if isAdmin() 
+                    || (isAuthenticated() && resource.data.user.uid == request.auth.uid)
+                    || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'likes', 'upvotes']));
+    }
+    
+    // ── Default Deny ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

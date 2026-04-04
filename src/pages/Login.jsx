@@ -17,25 +17,42 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       navigate("/");
-    } catch {
-      setError("Invalid email or password.");
+    } catch (err) {
+      if (err.code === "auth/user-not-found") {
+        setError("No account found with this email. Please sign up.");
+      } else if (err.code === "auth/wrong-password") {
+        setError("Incorrect password. Try again.");
+      } else if (err.code === "auth/invalid-credential") {
+        setError("Invalid email or password.");
+      } else if (err.code === "auth/too-many-requests") {
+        setError("Too many failed attempts. Please try again later.");
+      } else {
+        setError("Login failed. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogle = async () => {
+    setIsLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
       navigate("/");
     } catch {
       setError("Google sign-in failed.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -54,7 +71,9 @@ export default function Login() {
           <label className="auth-label">Password</label>
           <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
-          <button type="submit" className="auth-btn">Login</button>
+          <button type="submit" className="auth-btn" disabled={isLoading}>
+            {isLoading ? "Logging in..." : "Login"}
+          </button>
         </form>
 
         <div className="auth-divider">
@@ -63,7 +82,7 @@ export default function Login() {
           <div className="auth-divider-line"></div>
         </div>
 
-        <button className="auth-google" onClick={handleGoogle}>
+        <button className="auth-google" onClick={handleGoogle} disabled={isLoading}>
           <GoogleIcon /> Continue with Google
         </button>
 
