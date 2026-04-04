@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, updateDoc, deleteDoc, addDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { useAuth } from '../../../context/AuthContext';
 import styles from "../../../pages/learn.module.css";
@@ -64,6 +64,7 @@ export default function CommunityFeed() {
     }
     try {
       const postRef = doc(db, 'community_posts', postId);
+      const post = posts.find(p => p._id === postId);
       const commentData = {
         _id: Date.now().toString(),
         text,
@@ -75,6 +76,15 @@ export default function CommunityFeed() {
       };
       await updateDoc(postRef, {
         comments: arrayUnion(commentData)
+      });
+
+      // Dual-write to user's comments subcollection for fast profile lookups
+      await addDoc(collection(db, 'users', user.uid, 'userComments'), {
+        text,
+        parentType: 'Community Post',
+        parentTitle: post?.text?.substring(0, 80) || 'Post',
+        parentRef: postId,
+        createdAt: new Date().toISOString()
       });
     } catch (err) {
       console.error('Comment failed', err);

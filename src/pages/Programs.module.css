@@ -202,6 +202,76 @@
 .weekResetCard h2 { font-family: 'Bebas Neue', sans-serif; font-size: 48px; color: #e8ff47; margin: 0; }
 .weekResetCard p { color: #9999a8; margin: 12px 0 32px; }
 
+/* ── WEEKLY STATS CARD ── */
+.weeklyStatsCard {
+  background: rgba(28, 28, 32, 0.6);
+  border: 1px solid #2a2a2e;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 28px;
+}
+
+.weeklyStatsTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 1.5px;
+  color: #e8ff47;
+  margin: 0 0 18px;
+}
+
+.weeklyStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 12px;
+  background: rgba(13, 13, 15, 0.5);
+  border: 1px solid rgba(42, 42, 46, 0.6);
+  border-radius: 12px;
+}
+
+.statItemValue {
+  font-family: 'DM Mono', monospace;
+  font-size: 32px;
+  font-weight: 700;
+  color: #f0f0f0;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.statItemLabel {
+  font-size: 12px;
+  color: #6b6b75;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.statChange {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.statUp {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.statDown {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
 /* ── TRACKER UI ── */
 .trackerHeader {
   display: flex;
@@ -512,6 +582,170 @@
   box-shadow: 0 10px 40px rgba(232, 255, 71, 0.2);
 }
 
+/* ===== VIEW TOGGLE (Schedule / History) ===== */
+.viewToggle {
+  display: flex;
+  gap: 4px;
+  margin-top: 20px;
+  background: rgba(13, 13, 15, 0.5);
+  border: 1px solid #2a2a2e;
+  border-radius: 10px;
+  padding: 4px;
+  width: fit-content;
+}
+
+.toggleBtn {
+  background: transparent;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b6b75;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggleBtn:hover {
+  color: #9999a8;
+}
+
+.toggleActive {
+  background: rgba(232, 255, 71, 0.1);
+  color: #e8ff47;
+}
+
+/* ===== WORKOUT HISTORY ===== */
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.historyCard {
+  background: rgba(28, 28, 32, 0.6);
+  border: 1px solid #2a2a2e;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.historyCard:hover {
+  border-color: #3a3a3e;
+}
+
+.historyHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.historyHeader:hover {
+  background: rgba(42, 42, 46, 0.3);
+}
+
+.historyMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+}
+
+.historyDay {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: #f0f0f0;
+}
+
+.historyDate {
+  font-size: 12px;
+  color: #6b6b75;
+}
+
+.historyStats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.historyStatChip {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  background: rgba(13, 13, 15, 0.5);
+  border: 1px solid rgba(42, 42, 46, 0.6);
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: #9999a8;
+  white-space: nowrap;
+}
+
+.historyExpand {
+  color: #4a4a55;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.historyBody {
+  padding: 0 24px 20px;
+  border-top: 1px solid #2a2a2e;
+  animation: historyExpand 0.2s ease;
+}
+
+@keyframes historyExpand {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 1000px; }
+}
+
+.historyExercises {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  padding-top: 16px;
+}
+
+.historyExCard {
+  background: rgba(13, 13, 15, 0.4);
+  border: 1px solid rgba(42, 42, 46, 0.4);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.historyExName {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  color: #f0f0f0;
+  margin-bottom: 8px;
+}
+
+.historySets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.historySet {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: #6b6b75;
+  background: rgba(42, 42, 46, 0.4);
+}
+
+.historySetDone {
+  color: #e8ff47;
+  background: rgba(232, 255, 71, 0.06);
+  border: 1px solid rgba(232, 255, 71, 0.15);
+}
+
 /* ===== RESPONSIVE — TABLET ===== */
 @media (max-width: 768px) {
   .trackerHeader { flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -525,6 +759,7 @@
   .exTitle { font-size: 22px; }
   .dashTitle { font-size: 48px; }
   .restTimerCount { font-size: 22px; }
+  .statItemValue { font-size: 26px; }
 }
 
 /* ===== RESPONSIVE — PHONE ===== */
@@ -536,10 +771,17 @@
   .trackerMeta h1 { font-size: 28px; }
   .timer { font-size: 28px; }
 
-  .setsTable th { padding: 8px 8px; font-size: 9px; }
-  .setRow td, .setRowDone td { padding: 8px 8px; }
-  .setVal { width: 52px; padding: 8px 4px; font-size: 13px; border-radius: 4px; }
-  .checkBtn, .checkBtnDone { width: 32px; height: 32px; font-size: 14px; }
+  /* Hide Previous column on mobile */
+  .setsTable th:nth-child(2),
+  .setRow td:nth-child(2),
+  .setRowDone td:nth-child(2) {
+    display: none;
+  }
+
+  .setsTable th { padding: 8px 6px; font-size: 9px; }
+  .setRow td, .setRowDone td { padding: 8px 6px; }
+  .setVal { width: 54px; padding: 10px 4px; font-size: 14px; border-radius: 6px; }
+  .checkBtn, .checkBtnDone { width: 36px; height: 36px; font-size: 14px; }
   .prevFillBtn { font-size: 10px; padding: 3px 5px; }
 
   .restTimerInner { gap: 10px; }
@@ -553,4 +795,9 @@
 
   .finishBtn { width: 100%; padding: 14px; }
   .workoutFooter { margin-top: 24px; }
+  .weeklyStatsGrid { grid-template-columns: 1fr; gap: 10px; }
+  .statItemValue { font-size: 24px; }
+
+  /* History card mobile */
+  .historyExercises { grid-template-columns: 1fr; }
 }

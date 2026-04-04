@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { doc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase";
+import { useAuth } from "../context/AuthContext";
 import "./Exercises.css";
 
 const EXERCISES_URL =
@@ -21,6 +24,7 @@ const CATEGORIES = [
 ];
 
 export default function Exercises() {
+  const { user } = useAuth();
   const [allEx, setAllEx] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -28,12 +32,18 @@ export default function Exercises() {
   const [search, setSearch] = useState("");
   const [muscle, setMuscle] = useState("All");
   const [category, setCategory] = useState("All");
+  const [showFavOnly, setShowFavOnly] = useState(false);
 
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
 
+  // Favorites
+  const [favorites, setFavorites] = useState(new Set());
+  const [favLoading, setFavLoading] = useState(false);
+
   const topRef = useRef(null);
 
+  // Load exercises
   useEffect(() => {
     const load = async () => {
       try {
@@ -49,25 +59,70 @@ export default function Exercises() {
     load();
   }, []);
 
+  // Load user favorites
+  useEffect(() => {
+    if (!user) { setFavorites(new Set()); return; }
+    const loadFavs = async () => {
+      try {
+        const favsRef = collection(db, 'users', user.uid, 'exerciseFavorites');
+        const snap = await getDocs(favsRef);
+        const favIds = new Set();
+        snap.forEach(d => favIds.add(d.id));
+        setFavorites(favIds);
+      } catch (err) {
+        console.error("Failed to load favorites", err);
+      }
+    };
+    loadFavs();
+  }, [user]);
+
+  const toggleFavorite = async (exerciseId, exerciseName, e) => {
+    if (e) e.stopPropagation();
+    if (!user) {
+      alert('Log in to save favorites.');
+      return;
+    }
+    if (favLoading) return;
+    setFavLoading(true);
+    
+    try {
+      const favRef = doc(db, 'users', user.uid, 'exerciseFavorites', exerciseId);
+      if (favorites.has(exerciseId)) {
+        await deleteDoc(favRef);
+        setFavorites(prev => { const n = new Set(prev); n.delete(exerciseId); return n; });
+      } else {
+        await setDoc(favRef, { name: exerciseName, addedAt: new Date().toISOString() });
+        setFavorites(prev => new Set(prev).add(exerciseId));
+      }
+    } catch (err) {
+      console.error("Failed to toggle favorite", err);
+    } finally {
+      setFavLoading(false);
+    }
+  };
+
   // Filter
   const filtered = allEx.filter((ex) => {
- const matchSearch =
-  !search ||
-  ex.name?.toLowerCase().includes(search.toLowerCase()) ||
-  ex.primaryMuscles?.some((m) => m.toLowerCase().includes(search.toLowerCase()));
+    const matchSearch =
+      !search ||
+      ex.name?.toLowerCase().includes(search.toLowerCase()) ||
+      ex.primaryMuscles?.some((m) => m.toLowerCase().includes(search.toLowerCase()));
 
-const normalize = (str) => str.toLowerCase().replace(/\s|_/g, "");
+    const normalize = (str) => str.toLowerCase().replace(/\s|_/g, "");
 
-const matchMuscle =
-  muscle === "All" ||
-  ex.primaryMuscles?.some((m) =>
-    normalize(m).includes(normalize(muscle))
-  );
+    const matchMuscle =
+      muscle === "All" ||
+      ex.primaryMuscles?.some((m) =>
+        normalize(m).includes(normalize(muscle))
+      );
 
     const matchCat =
       category === "All" ||
       ex.category?.toLowerCase() === category.toLowerCase();
-    return matchSearch && matchMuscle && matchCat;
+
+    const matchFav = !showFavOnly || favorites.has(ex.id);
+
+    return matchSearch && matchMuscle && matchCat && matchFav;
   });
 
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
@@ -79,7 +134,7 @@ const matchMuscle =
   };
 
   // Reset page on filter change
-  useEffect(() => { setPage(1); }, [search, muscle, category]);
+  useEffect(() => { setPage(1); }, [search, muscle, category, showFavOnly]);
 
   const getImage = (ex) => {
     if (!ex.images?.length) return null;
@@ -106,7 +161,7 @@ const matchMuscle =
       <div className="ex-header">
         <h1 className="ex-title">Exercise Library</h1>
         <p className="ex-subtitle">
-          {loading ? "Loading..." : `${filtered.length.toLocaleString()} exercises`}
+          {loading ? "Loading..." : showFavOnly ? `${filtered.length} favorite${filtered.length !== 1 ? 's' : ''}` : `${filtered.length.toLocaleString()} exercises`}
         </p>
       </div>
 
@@ -145,6 +200,16 @@ const matchMuscle =
               <option key={c} value={c}>{c === "All" ? "All Categories" : c}</option>
             ))}
           </select>
+
+          {user && (
+            <button
+              className={`ex-fav-filter ${showFavOnly ? 'active' : ''}`}
+              onClick={() => setShowFavOnly(v => !v)}
+              title="Show favorites only"
+            >
+              {showFavOnly ? '★ Favorites' : '☆ Favorites'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -154,7 +219,7 @@ const matchMuscle =
       {/* Loading skeleton */}
       {loading && (
         <div className="ex-grid">
-          {Array.from({ length: PER_PAGE }).map((_, i) => (
+          {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="ex-card skeleton" />
           ))}
         </div>
@@ -165,46 +230,64 @@ const matchMuscle =
         <>
           {paginated.length === 0 ? (
             <div className="ex-empty">
-              <p>No exercises found for "{search}"</p>
+              {showFavOnly ? (
+                <p>No favorites yet. Star exercises to save them here!</p>
+              ) : (
+                <p>No exercises found for "{search}"</p>
+              )}
             </div>
           ) : (
             <div className="ex-grid">
-              {paginated.map((ex, i) => (
-                <div
-                  key={ex.id || i}
-                  className="ex-card"
-                  onClick={() => setSelected(ex)}
-                >
-                  <div className="ex-card-img-wrap">
-                    {getImage(ex) ? (
-                      <img
-                        src={getImage(ex)}
-                        alt={ex.name}
-                        className="ex-card-img"
-                        loading="lazy"
-                        onError={(e) => { e.target.style.display = "none"; }}
-                      />
-                    ) : (
-                      <div className="ex-card-no-img">💪</div>
-                    )}
-                    <span className="ex-card-cat">{ex.category}</span>
-                  </div>
-                  <div className="ex-card-body">
-                    <h3 className="ex-card-name">{ex.name}</h3>
-                    <div className="ex-card-muscles">
-                      {ex.muscles?.slice(0, 2).map((m, j) => (
-                        <span key={j} className="ex-muscle-chip primary">{m}</span>
-                      ))}
-                      {ex.muscles_secondary?.slice(0, 1).map((m, j) => (
-                        <span key={j} className="ex-muscle-chip secondary">{m}</span>
-                      ))}
+              {paginated.map((ex, i) => {
+                const isFav = favorites.has(ex.id);
+                return (
+                  <div
+                    key={ex.id || i}
+                    className="ex-card"
+                    onClick={() => setSelected(ex)}
+                  >
+                    <div className="ex-card-img-wrap">
+                      {getImage(ex) ? (
+                        <img
+                          src={getImage(ex)}
+                          alt={ex.name}
+                          className="ex-card-img"
+                          loading="lazy"
+                          onError={(e) => { e.target.style.display = "none"; }}
+                        />
+                      ) : (
+                        <div className="ex-card-no-img">💪</div>
+                      )}
+                      <span className="ex-card-cat">{ex.category}</span>
+                      
+                      {/* Favorite star */}
+                      {user && (
+                        <button
+                          className={`ex-fav-btn ${isFav ? 'active' : ''}`}
+                          onClick={(e) => toggleFavorite(ex.id, ex.name, e)}
+                          title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          {isFav ? '★' : '☆'}
+                        </button>
+                      )}
                     </div>
-                    {ex.equipment && (
-                      <div className="ex-card-equip">🏋️ {ex.equipment}</div>
-                    )}
+                    <div className="ex-card-body">
+                      <h3 className="ex-card-name">{ex.name}</h3>
+                      <div className="ex-card-muscles">
+                        {ex.muscles?.slice(0, 2).map((m, j) => (
+                          <span key={j} className="ex-muscle-chip primary">{m}</span>
+                        ))}
+                        {ex.muscles_secondary?.slice(0, 1).map((m, j) => (
+                          <span key={j} className="ex-muscle-chip secondary">{m}</span>
+                        ))}
+                      </div>
+                      {ex.equipment && (
+                        <div className="ex-card-equip">🏋️ {ex.equipment}</div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -272,7 +355,17 @@ const matchMuscle =
             </div>
 
             <div className="modal-body">
-              <div className="modal-cat">{selected.category}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="modal-cat">{selected.category}</div>
+                {user && (
+                  <button
+                    className={`ex-fav-btn-modal ${favorites.has(selected.id) ? 'active' : ''}`}
+                    onClick={() => toggleFavorite(selected.id, selected.name)}
+                  >
+                    {favorites.has(selected.id) ? '★ Favorited' : '☆ Add to Favorites'}
+                  </button>
+                )}
+              </div>
               <h2 className="modal-name">{selected.name}</h2>
 
               <div className="modal-tags">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove, collection, addDoc } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { useAuth } from '../../../context/AuthContext';
 import styles from "../../../pages/learn.module.css";
@@ -71,6 +71,15 @@ export default function EditorialDetail() {
       };
       await updateDoc(docRef, {
         comments: arrayUnion(commentData)
+      });
+
+      // Dual-write to user's comments subcollection for fast profile lookups
+      await addDoc(collection(db, 'users', user.uid, 'userComments'), {
+        text,
+        parentType: 'Editorial Article',
+        parentTitle: post?.title?.substring(0, 80) || 'Article',
+        parentRef: id,
+        createdAt: new Date().toISOString()
       });
     } catch (err) {
       console.error('Comment failed', err);

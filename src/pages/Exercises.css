@@ -413,6 +413,59 @@
 
 .modal-steps li::marker { color: #e8ff47; font-weight: 700; }
 
+/* ── FAVORITES ───────────────────────────────────────────── */
+.ex-fav-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  background: rgba(2,6,23,0.75);
+  backdrop-filter: blur(4px);
+  border: 1px solid #2a2a2e;
+  border-radius: 50%;
+  color: #4a4a55;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 2;
+}
+.ex-fav-btn:hover { color: #e8ff47; border-color: rgba(232,255,71,0.4); }
+.ex-fav-btn.active { color: #e8ff47; border-color: rgba(232,255,71,0.4); background: rgba(232,255,71,0.12); }
+
+.ex-fav-btn-modal {
+  background: transparent;
+  border: 1px solid #2a2a2e;
+  border-radius: 8px;
+  padding: 6px 14px;
+  color: #6b6b75;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ex-fav-btn-modal:hover { border-color: #e8ff47; color: #e8ff47; }
+.ex-fav-btn-modal.active { color: #e8ff47; border-color: rgba(232,255,71,0.4); background: rgba(232,255,71,0.08); }
+
+.ex-fav-filter {
+  padding: 10px 16px;
+  background: #1c1c20;
+  border: 1px solid #2a2a2e;
+  color: #6b6b75;
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ex-fav-filter:hover { border-color: #e8ff47; color: #e8ff47; }
+.ex-fav-filter.active { background: rgba(232,255,71,0.08); border-color: #e8ff47; color: #e8ff47; }
+
 /* ── RESPONSIVE ──────────────────────────────────────────── */
 @media (max-width: 640px) {
   .ex-page { padding: 16px; }

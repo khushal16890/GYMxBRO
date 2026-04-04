@@ -63,48 +63,69 @@ export default function Profile() {
           });
         }
 
-        // 4. Fetch Comments — limit to 50 most recent posts/articles to avoid full-DB scan
-        const recentPostsQ = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
-        const allComPostsSnap = await getDocs(recentPostsQ);
-        allComPostsSnap.forEach(d => {
-          const data = d.data();
-          if (data.comments && Array.isArray(data.comments)) {
-            data.comments.forEach(c => {
-              if (c.user && c.user.uid === user.uid) {
-                fetchedComments.push({
-                  id: c._id,
-                  type: 'comment',
-                  parentType: 'Community Post',
-                  parentTitle: data.text,
-                  parentRef: d.id,
-                  text: c.text,
-                  createdAt: c.createdAt
-                });
-              }
+        // 4. Fetch Comments — use the userComments subcollection (fast, indexed)
+        const userCommentsRef = collection(db, 'users', user.uid, 'userComments');
+        const userCommentsQ = query(userCommentsRef, orderBy('createdAt', 'desc'), limit(50));
+        const userCommentsSnap = await getDocs(userCommentsQ);
+        
+        if (!userCommentsSnap.empty) {
+          // New path: use the dedicated subcollection
+          userCommentsSnap.forEach(d => {
+            const data = d.data();
+            fetchedComments.push({
+              id: d.id,
+              type: 'comment',
+              parentType: data.parentType || 'Post',
+              parentTitle: data.parentTitle || '',
+              parentRef: data.parentRef || '',
+              text: data.text,
+              createdAt: data.createdAt
             });
-          }
-        });
+          });
+        } else {
+          // Fallback: scan recent posts if subcollection is empty (migration path)
+          const recentPostsQ = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(30));
+          const allComPostsSnap = await getDocs(recentPostsQ);
+          allComPostsSnap.forEach(d => {
+            const data = d.data();
+            if (data.comments && Array.isArray(data.comments)) {
+              data.comments.forEach(c => {
+                if (c.user && c.user.uid === user.uid) {
+                  fetchedComments.push({
+                    id: c._id,
+                    type: 'comment',
+                    parentType: 'Community Post',
+                    parentTitle: data.text,
+                    parentRef: d.id,
+                    text: c.text,
+                    createdAt: c.createdAt
+                  });
+                }
+              });
+            }
+          });
 
-        const recentArtsQ = query(collection(db, 'editorial_articles'), orderBy('createdAt', 'desc'), limit(50));
-        const allArtSnap = await getDocs(recentArtsQ);
-        allArtSnap.forEach(d => {
-          const data = d.data();
-          if (data.comments && Array.isArray(data.comments)) {
-            data.comments.forEach(c => {
-              if (c.user && c.user.uid === user.uid) {
-                fetchedComments.push({
-                  id: c._id,
-                  type: 'comment',
-                  parentType: 'Editorial Article',
-                  parentTitle: data.title,
-                  parentRef: d.id,
-                  text: c.text,
-                  createdAt: c.createdAt
-                });
-              }
-            });
-          }
-        });
+          const recentArtsQ = query(collection(db, 'editorial_articles'), orderBy('createdAt', 'desc'), limit(30));
+          const allArtSnap = await getDocs(recentArtsQ);
+          allArtSnap.forEach(d => {
+            const data = d.data();
+            if (data.comments && Array.isArray(data.comments)) {
+              data.comments.forEach(c => {
+                if (c.user && c.user.uid === user.uid) {
+                  fetchedComments.push({
+                    id: c._id,
+                    type: 'comment',
+                    parentType: 'Editorial Article',
+                    parentTitle: data.title,
+                    parentRef: d.id,
+                    text: c.text,
+                    createdAt: c.createdAt
+                  });
+                }
+              });
+            }
+          });
+        }
 
         fetchedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         fetchedComments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

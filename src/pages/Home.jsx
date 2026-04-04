@@ -5,20 +5,23 @@ import "./Home.css";
 const stats = [
   { value: "800+", label: "Exercises" },
   { value: "AI", label: "Smart Planning" },
-  { value: "100%", label: "Free Forever" },
-  { value: "24/7", label: "Access" },
+  { value: "∞", label: "Custom Plans" },
+  { value: "0", label: "Excuses" },
 ];
 
 const features = [
   {
+    
     title: "AI Workout Plans",
-    desc: "Get a week-by-week program matched to your experience, schedule, and goals — generated in seconds. Just fill in your stats and go.",
+    desc: "Input your stats and goals — get a complete, personalized training plan in seconds. Built like a real coach would write it.",
   },
   {
+   
     title: "Manual Builder",
-    desc: "Full control. Search 800+ exercises, build your split day by day, set your own sets, reps and rest periods. Your programming, your rules.",
+    desc: "Full control. Search 800+ exercises, build your split day by day, set sets, reps and rest. Your plan, your rules.",
   },
   {
+   
     title: "Workout Tracker",
     desc: "Log every set in real time with a built-in rest timer and auto-fill from your last session. See previous weights so you never guess.",
   },

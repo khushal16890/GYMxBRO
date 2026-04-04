@@ -74,6 +74,14 @@ export default function Programs() {
   // Previous workout data for "Repeat Previous Set"
   const [previousData, setPreviousData] = useState({}); // { exerciseName: [{ weight, reps }, ...] }
 
+  // Weekly stats
+  const [weeklyStats, setWeeklyStats] = useState(null);
+
+  // Workout History
+  const [workoutHistory, setWorkoutHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [expandedLog, setExpandedLog] = useState(null);
+
   useEffect(() => {
     if (!user) return;
     const fetchPrograms = async () => {
@@ -93,6 +101,73 @@ export default function Programs() {
       }
     };
     fetchPrograms();
+  }, [user]);
+
+  // Fetch weekly stats
+  useEffect(() => {
+    if (!user) return;
+    const fetchStats = async () => {
+      try {
+        const logsRef = collection(db, "users", user.uid, "workoutLogs");
+        const allLogsSnap = await getDocs(query(logsRef, orderBy("date", "desc"), limit(60)));
+        const logs = [];
+        allLogsSnap.forEach(d => {
+          const data = d.data();
+          const ts = data.date?.toDate ? data.date.toDate() : new Date(data.date);
+          logs.push({ ...data, _ts: ts });
+        });
+
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const startOfLastWeek = new Date(startOfWeek);
+        startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+
+        const thisWeek = logs.filter(l => l._ts >= startOfWeek);
+        const lastWeek = logs.filter(l => l._ts >= startOfLastWeek && l._ts < startOfWeek);
+
+        const calcVolume = (weekLogs) => {
+          let vol = 0;
+          weekLogs.forEach(log => {
+            log.exercises?.forEach(ex => {
+              ex.sets?.forEach(s => {
+                const w = parseFloat(s.weight) || 0;
+                const r = parseInt(s.reps) || 0;
+                if (s.done !== false) vol += w * r;
+              });
+            });
+          });
+          return vol;
+        };
+
+        const calcAvgDuration = (weekLogs) => {
+          if (weekLogs.length === 0) return 0;
+          const total = weekLogs.reduce((sum, l) => sum + (l.durationSeconds || 0), 0);
+          return Math.round(total / weekLogs.length);
+        };
+
+        const thisVol = calcVolume(thisWeek);
+        const lastVol = calcVolume(lastWeek);
+        const volChange = lastVol > 0 ? Math.round(((thisVol - lastVol) / lastVol) * 100) : null;
+
+        const thisCount = thisWeek.length;
+        const lastCount = lastWeek.length;
+
+        setWeeklyStats({
+          workouts: thisCount,
+          workoutsLast: lastCount,
+          volume: thisVol,
+          volumeChange: volChange,
+          avgDuration: calcAvgDuration(thisWeek),
+          avgDurationLast: calcAvgDuration(lastWeek)
+        });
+      } catch (err) {
+        console.error("Failed to fetch weekly stats", err);
+      }
+    };
+    fetchStats();
   }, [user]);
 
   // Workout elapsed timer
@@ -172,11 +247,13 @@ export default function Programs() {
     const completedCount = prog.completedDays?.length || 0;
     setActiveDayIdx(completedCount);
     fetchPreviousData(prog.id);
+    fetchHistory(prog.id);
   };
 
   const closeProgram = () => {
     setSelectedProgram(null);
     setWorkoutActive(false);
+    setShowHistory(false);
     dismissRest();
   };
 
@@ -184,6 +261,32 @@ export default function Programs() {
     clearInterval(restTimerRef.current);
     setRestActive(false);
     setRestRemaining(0);
+  };
+
+  const fetchHistory = async (programId) => {
+    if (!user) return;
+    try {
+      const logsRef = collection(db, "users", user.uid, "workoutLogs");
+      const q = query(logsRef, where("programId", "==", programId), orderBy("date", "desc"), limit(10));
+      const snap = await getDocs(q);
+      const logs = [];
+      snap.forEach(d => {
+        const data = d.data();
+        const ts = data.date?.toDate ? data.date.toDate() : new Date(data.date);
+        let volume = 0;
+        data.exercises?.forEach(ex => {
+          ex.sets?.forEach(s => {
+            const w = parseFloat(s.weight) || 0;
+            const r = parseInt(s.reps) || 0;
+            if (s.done !== false) volume += w * r;
+          });
+        });
+        logs.push({ id: d.id, ...data, _ts: ts, _volume: volume });
+      });
+      setWorkoutHistory(logs);
+    } catch (err) {
+      console.error("Failed to fetch history", err);
+    }
   };
 
   if (loading) {
@@ -198,6 +301,42 @@ export default function Programs() {
           <h1 className={styles.dashTitle}>My Programs</h1>
           <p className={styles.dashSummary}>Select a program to start your workout.</p>
         </header>
+
+        {/* Weekly Stats Card */}
+        {weeklyStats && (
+          <div className={styles.weeklyStatsCard}>
+            <h3 className={styles.weeklyStatsTitle}>This Week</h3>
+            <div className={styles.weeklyStatsGrid}>
+              <div className={styles.statItem}>
+                <span className={styles.statItemValue}>{weeklyStats.workouts}</span>
+                <span className={styles.statItemLabel}>Workouts</span>
+                {weeklyStats.workoutsLast > 0 && (
+                  <span className={`${styles.statChange} ${weeklyStats.workouts >= weeklyStats.workoutsLast ? styles.statUp : styles.statDown}`}>
+                    {weeklyStats.workouts >= weeklyStats.workoutsLast ? '↑' : '↓'} vs {weeklyStats.workoutsLast} last wk
+                  </span>
+                )}
+              </div>
+              <div className={styles.statItem}>
+                <span className={styles.statItemValue}>{weeklyStats.volume > 1000 ? `${(weeklyStats.volume / 1000).toFixed(1)}k` : weeklyStats.volume}</span>
+                <span className={styles.statItemLabel}>Volume (kg)</span>
+                {weeklyStats.volumeChange !== null && (
+                  <span className={`${styles.statChange} ${weeklyStats.volumeChange >= 0 ? styles.statUp : styles.statDown}`}>
+                    {weeklyStats.volumeChange >= 0 ? '↑' : '↓'} {Math.abs(weeklyStats.volumeChange)}%
+                  </span>
+                )}
+              </div>
+              <div className={styles.statItem}>
+                <span className={styles.statItemValue}>{formatTime(weeklyStats.avgDuration)}</span>
+                <span className={styles.statItemLabel}>Avg Duration</span>
+                {weeklyStats.avgDurationLast > 0 && (
+                  <span className={`${styles.statChange} ${weeklyStats.avgDuration >= weeklyStats.avgDurationLast ? styles.statUp : styles.statDown}`}>
+                    {weeklyStats.avgDuration >= weeklyStats.avgDurationLast ? '↑' : '↓'} vs {formatTime(weeklyStats.avgDurationLast)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {programs.length === 0 ? (
           <div className={styles.emptyState}>
@@ -495,9 +634,85 @@ export default function Programs() {
         </button>
         <h1 className={styles.dashTitle}>{selectedProgram.name || "Active Program"}</h1>
         {selectedProgram.summary && <p className={styles.dashSummary}>{selectedProgram.summary}</p>}
+
+        {/* Toggle tabs: Schedule / History */}
+        <div className={styles.viewToggle}>
+          <button
+            className={`${styles.toggleBtn} ${!showHistory ? styles.toggleActive : ''}`}
+            onClick={() => setShowHistory(false)}
+          >
+            Schedule
+          </button>
+          <button
+            className={`${styles.toggleBtn} ${showHistory ? styles.toggleActive : ''}`}
+            onClick={() => setShowHistory(true)}
+          >
+            History ({workoutHistory.length})
+          </button>
+        </div>
       </header>
 
-      {weekFinished ? (
+      {showHistory ? (
+        /* ---- HISTORY VIEW ---- */
+        <div className={styles.historyList}>
+          {workoutHistory.length === 0 ? (
+            <div className={styles.emptyState} style={{ height: 'auto', padding: '60px 24px' }}>
+              <div className={styles.emptyIcon}>📊</div>
+              <h2>No Workout History</h2>
+              <p>Complete a workout to see your history here.</p>
+            </div>
+          ) : (
+            workoutHistory.map(log => (
+              <div key={log.id} className={styles.historyCard}>
+                <div
+                  className={styles.historyHeader}
+                  onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
+                >
+                  <div className={styles.historyMeta}>
+                    <span className={styles.historyDay}>{log.day}</span>
+                    <span className={styles.historyDate}>
+                      {log._ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <div className={styles.historyStats}>
+                    <span className={styles.historyStatChip}>
+                      ⏱ {formatTime(log.durationSeconds || 0)}
+                    </span>
+                    <span className={styles.historyStatChip}>
+                      🏋 {log._volume > 1000 ? `${(log._volume / 1000).toFixed(1)}k` : log._volume} kg
+                    </span>
+                    <span className={styles.historyStatChip}>
+                      {log.exercises?.length || 0} exercises
+                    </span>
+                  </div>
+                  <span className={styles.historyExpand}>
+                    {expandedLog === log.id ? '▲' : '▼'}
+                  </span>
+                </div>
+
+                {expandedLog === log.id && (
+                  <div className={styles.historyBody}>
+                    <div className={styles.historyExercises}>
+                      {log.exercises?.map((ex, i) => (
+                        <div key={i} className={styles.historyExCard}>
+                          <div className={styles.historyExName}>{ex.name}</div>
+                          <div className={styles.historySets}>
+                            {ex.sets?.map((s, j) => (
+                              <span key={j} className={`${styles.historySet} ${s.done ? styles.historySetDone : ''}`}>
+                                {s.weight || 0}kg × {s.reps || 0}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      ) : weekFinished ? (
         <div className={styles.weekResetCard}>
           <div className={styles.trophy}>🏆</div>
           <h2>Week Completed!</h2>
