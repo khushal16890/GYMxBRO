@@ -51,6 +51,12 @@ export default function CommunityPostCard({ post, currentUser, onUpvote, onComme
 
       <p className={styles.communityText}>{post.text}</p>
 
+      {post.imageUrl && (
+        <div className={styles.postImageWrap}>
+          <img src={post.imageUrl} alt="Post attachment" className={styles.postImage} />
+        </div>
+      )}
+
       <div className={styles.communityCardFooter}>
         <button
           className={`${styles.upvoteBtn} ${hasUpvoted ? styles.upvoteBtnActive : ''}`}

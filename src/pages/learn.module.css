@@ -867,3 +867,97 @@
   .editorialGrid { grid-template-columns: 1fr; }
   .detailTitle { font-size: 36px; }
 }
+
+/* ===== IMAGE PICKER BUTTON ===== */
+.imagePickerBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--learn-border);
+  border-radius: var(--learn-radius-sm);
+  background: transparent;
+  color: var(--learn-dim);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  margin-right: auto;
+}
+
+.imagePickerBtn:hover {
+  border-color: var(--learn-accent);
+  color: var(--learn-accent);
+}
+
+/* ===== IMAGE PREVIEW IN CREATE FORMS ===== */
+.imagePreviewWrap {
+  position: relative;
+  margin-top: 12px;
+  border-radius: var(--learn-radius);
+  overflow: hidden;
+  border: 1px solid var(--learn-border);
+  max-height: 280px;
+}
+
+.imagePreviewImg {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.imageRemoveBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  background: rgba(13, 13, 15, 0.75);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--learn-border);
+  border-radius: 50%;
+  color: var(--learn-text);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.imageRemoveBtn:hover {
+  background: var(--learn-red);
+  border-color: var(--learn-red);
+}
+
+/* ===== POST IMAGE IN COMMUNITY CARDS ===== */
+.postImageWrap {
+  border-radius: var(--learn-radius);
+  overflow: hidden;
+  margin-bottom: 14px;
+  border: 1px solid var(--learn-border);
+}
+
+.postImage {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  display: block;
+}
+
+/* ===== COVER IMAGE IN EDITORIAL DETAIL ===== */
+.detailCoverWrap {
+  border-radius: var(--learn-radius);
+  overflow: hidden;
+  margin-bottom: 32px;
+  border: 1px solid var(--learn-border);
+}
+
+.detailCoverImg {
+  width: 100%;
+  max-height: 460px;
+  object-fit: cover;
+  display: block;
+}

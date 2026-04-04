@@ -134,6 +134,13 @@ export default function EditorialDetail() {
           </span>
         </div>
 
+        {/* Cover Image */}
+        {post.imageUrl && (
+          <div className={styles.detailCoverWrap}>
+            <img src={post.imageUrl} alt={post.title} className={styles.detailCoverImg} />
+          </div>
+        )}
+
         {/* Article body */}
         <div className={styles.detailContent}>
           {post.content?.split('\n').map((para, i) =>

@@ -23,9 +23,15 @@ export default function EditorialCard({ post, onClick }) {
     <div className={styles.editorialCard} onClick={onClick} role="button" tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onClick()}>
       
-      <div className={styles.cardImagePlaceholder}>
-        {cardLabel(post.title)}
-      </div>
+      {post.imageUrl ? (
+        <div className={styles.cardImagePlaceholder} style={{ padding: 0 }}>
+          <img src={post.imageUrl} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+      ) : (
+        <div className={styles.cardImagePlaceholder}>
+          {cardLabel(post.title)}
+        </div>
+      )}
 
       <div className={styles.cardBody}>
         {post.tags?.length > 0 && (
