@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile } from 'firebase/auth';
-import { doc, getDoc, updateDoc, collection, query, getDocs, where } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, getDocs, where, orderBy, limit } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import styles from './Profile.module.css';
@@ -63,8 +63,9 @@ export default function Profile() {
           });
         }
 
-        // 4. Fetch Comments
-        const allComPostsSnap = await getDocs(collection(db, 'community_posts'));
+        // 4. Fetch Comments — limit to 50 most recent posts/articles to avoid full-DB scan
+        const recentPostsQ = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
+        const allComPostsSnap = await getDocs(recentPostsQ);
         allComPostsSnap.forEach(d => {
           const data = d.data();
           if (data.comments && Array.isArray(data.comments)) {
@@ -84,7 +85,8 @@ export default function Profile() {
           }
         });
 
-        const allArtSnap = await getDocs(collection(db, 'editorial_articles'));
+        const recentArtsQ = query(collection(db, 'editorial_articles'), orderBy('createdAt', 'desc'), limit(50));
+        const allArtSnap = await getDocs(recentArtsQ);
         allArtSnap.forEach(d => {
           const data = d.data();
           if (data.comments && Array.isArray(data.comments)) {

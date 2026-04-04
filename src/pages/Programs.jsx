@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
-import { doc, getDocs, updateDoc, deleteDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDocs, updateDoc, deleteDoc, collection, addDoc, serverTimestamp, query, where, orderBy, limit } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import styles from "./Programs.module.css";
 
@@ -9,6 +9,45 @@ function formatTime(seconds) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+// Parse rest strings like "90s", "2min", "1:30", "60" into seconds
+function parseRestSeconds(restStr) {
+  if (!restStr) return 90; // default 90s
+  const s = restStr.toString().trim().toLowerCase();
+  if (s.includes(':')) {
+    const [m, sec] = s.split(':').map(Number);
+    return (m || 0) * 60 + (sec || 0);
+  }
+  if (s.endsWith('min')) return parseInt(s) * 60 || 90;
+  if (s.endsWith('s')) return parseInt(s) || 90;
+  const num = parseInt(s);
+  return num > 0 ? (num <= 10 ? num * 60 : num) : 90; // if small number, treat as minutes
+}
+
+// Simple beep using Web Audio API
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.value = 0.3;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+    setTimeout(() => {
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.frequency.value = 1100;
+      gain2.gain.value = 0.3;
+      osc2.start();
+      osc2.stop(ctx.currentTime + 0.2);
+    }, 200);
+  } catch (e) { /* silently fail if no audio context */ }
 }
 
 export default function Programs() {
@@ -26,6 +65,15 @@ export default function Programs() {
   const [workoutData, setWorkoutData] = useState({});
   const timerRef = useRef(null);
 
+  // Rest timer state
+  const [restRemaining, setRestRemaining] = useState(0);
+  const [restDuration, setRestDuration] = useState(0);
+  const [restActive, setRestActive] = useState(false);
+  const restTimerRef = useRef(null);
+
+  // Previous workout data for "Repeat Previous Set"
+  const [previousData, setPreviousData] = useState({}); // { exerciseName: [{ weight, reps }, ...] }
+
   useEffect(() => {
     if (!user) return;
     const fetchPrograms = async () => {
@@ -36,7 +84,6 @@ export default function Programs() {
           fetched.push({ id: docSnap.id, ...docSnap.data() });
         });
         
-        // Sort newest first
         fetched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setPrograms(fetched);
       } catch (err) {
@@ -48,6 +95,7 @@ export default function Programs() {
     fetchPrograms();
   }, [user]);
 
+  // Workout elapsed timer
   useEffect(() => {
     if (workoutActive) {
       timerRef.current = setInterval(() => {
@@ -58,6 +106,51 @@ export default function Programs() {
     }
     return () => clearInterval(timerRef.current);
   }, [workoutActive]);
+
+  // Rest countdown timer
+  useEffect(() => {
+    if (restActive && restRemaining > 0) {
+      restTimerRef.current = setInterval(() => {
+        setRestRemaining(prev => {
+          if (prev <= 1) {
+            clearInterval(restTimerRef.current);
+            setRestActive(false);
+            playBeep();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(restTimerRef.current);
+  }, [restActive]);
+
+  // Fetch previous workout data when a program is opened for workout
+  const fetchPreviousData = async (programId) => {
+    if (!user) return;
+    try {
+      const logsRef = collection(db, "users", user.uid, "workoutLogs");
+      const q = query(logsRef, where("programId", "==", programId), orderBy("date", "desc"), limit(7));
+      const snap = await getDocs(q);
+      const prevMap = {};
+      snap.forEach(d => {
+        const log = d.data();
+        if (log.exercises) {
+          log.exercises.forEach(ex => {
+            if (!prevMap[ex.name] && ex.sets?.length > 0) {
+              prevMap[ex.name] = ex.sets.map(s => ({
+                weight: s.weight || '',
+                reps: s.reps || ''
+              }));
+            }
+          });
+        }
+      });
+      setPreviousData(prevMap);
+    } catch (err) {
+      console.error("Failed to fetch previous data", err);
+    }
+  };
 
   const handleDeletePlan = async (id, e) => {
     e.stopPropagation();
@@ -78,11 +171,19 @@ export default function Programs() {
     setSelectedProgram(prog);
     const completedCount = prog.completedDays?.length || 0;
     setActiveDayIdx(completedCount);
+    fetchPreviousData(prog.id);
   };
 
   const closeProgram = () => {
     setSelectedProgram(null);
     setWorkoutActive(false);
+    dismissRest();
+  };
+
+  const dismissRest = () => {
+    clearInterval(restTimerRef.current);
+    setRestActive(false);
+    setRestRemaining(0);
   };
 
   if (loading) {
@@ -153,6 +254,7 @@ export default function Programs() {
     setActiveDayIdx(dayIdx);
     setWorkoutActive(true);
     setElapsedTime(0);
+    dismissRest();
     
     const initialData = {};
     const exercises = selectedProgram.days[dayIdx].exercises || [];
@@ -169,21 +271,50 @@ export default function Programs() {
   const handleSetUpdate = (exIdx, setIdx, field, value) => {
     setWorkoutData(prev => {
       const copy = { ...prev };
+      copy[exIdx] = [...copy[exIdx]];
       copy[exIdx][setIdx] = { ...copy[exIdx][setIdx], [field]: value };
       return copy;
     });
   };
 
-  const toggleSetDone = (exIdx, setIdx) => {
+  const fillFromPrevious = (exIdx, setIdx, exerciseName) => {
+    const prev = previousData[exerciseName];
+    if (!prev || !prev[setIdx]) return;
+    setWorkoutData(old => {
+      const copy = { ...old };
+      copy[exIdx] = [...copy[exIdx]];
+      copy[exIdx][setIdx] = { 
+        ...copy[exIdx][setIdx], 
+        weight: prev[setIdx].weight, 
+        reps: prev[setIdx].reps 
+      };
+      return copy;
+    });
+  };
+
+  const toggleSetDone = (exIdx, setIdx, exercise) => {
     setWorkoutData(prev => {
       const copy = { ...prev };
-      copy[exIdx][setIdx].done = !copy[exIdx][setIdx].done;
+      copy[exIdx] = [...copy[exIdx]];
+      const wasDone = copy[exIdx][setIdx].done;
+      copy[exIdx][setIdx] = { ...copy[exIdx][setIdx], done: !wasDone };
+      
+      // Start rest timer when marking a set as done
+      if (!wasDone) {
+        const restSec = parseRestSeconds(exercise?.rest);
+        setRestDuration(restSec);
+        setRestRemaining(restSec);
+        clearInterval(restTimerRef.current);
+        setRestActive(true);
+      }
+      
       return copy;
     });
   };
 
   const finishWorkout = async () => {
     if (!window.confirm("Are you sure you want to finish this workout?")) return;
+    dismissRest();
     
     try {
       const logData = {
@@ -235,6 +366,8 @@ export default function Programs() {
 
   if (workoutActive) {
     const day = selectedProgram.days[activeDayIdx];
+    const restPercent = restDuration > 0 ? (restRemaining / restDuration) * 100 : 0;
+
     return (
       <div className={styles.container}>
         <div className={styles.trackerHeader}>
@@ -248,63 +381,97 @@ export default function Programs() {
           </div>
         </div>
 
-        <div className={styles.exercisesList}>
-          {day.exercises.map((ex, i) => (
-            <div key={i} className={styles.exerciseCard}>
-              <div className={styles.exHeader}>
-                <h3 className={styles.exTitle}>{ex.name}</h3>
-                <span className={styles.exTarget}>Target: {ex.sets} Sets × {ex.reps} ({ex.rest} rest)</span>
+        {/* Rest Timer Bar */}
+        {restActive && restRemaining > 0 && (
+          <div className={styles.restTimerBar}>
+            <div className={styles.restTimerInner}>
+              <span className={styles.restTimerLabel}>⏱ Rest</span>
+              <span className={styles.restTimerCount}>{formatTime(restRemaining)}</span>
+              <div className={styles.restProgressTrack}>
+                <div className={styles.restProgressFill} style={{ width: `${restPercent}%` }} />
               </div>
-              
-              <div className={styles.setsTableWrap}>
-                <table className={styles.setsTable}>
-                  <thead>
-                    <tr>
-                      <th>Set</th>
-                      <th>Previous</th>
-                      <th>kg / lbs</th>
-                      <th>Reps</th>
-                      <th>Done</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(workoutData[i] || []).map((set, sIdx) => (
-                      <tr key={sIdx} className={set.done ? styles.setRowDone : styles.setRow}>
-                        <td className={styles.setNumber}>{sIdx + 1}</td>
-                        <td className={styles.previousMeta}>-</td>
-                        <td>
-                          <input 
-                            className={styles.setVal} 
-                            placeholder="0" type="number" 
-                            value={set.weight}
-                            onChange={(e) => handleSetUpdate(i, sIdx, "weight", e.target.value)}
-                            disabled={set.done}
-                          />
-                        </td>
-                        <td>
-                          <input 
-                            className={set.done ? styles.setValDisabled : styles.setVal} 
-                            placeholder="0" type="number" 
-                            value={set.reps}
-                            onChange={(e) => handleSetUpdate(i, sIdx, "reps", e.target.value)}
-                            disabled={set.done}
-                          />
-                        </td>
-                        <td>
-                          <button 
-                            className={set.done ? styles.checkBtnDone : styles.checkBtn}
-                            onClick={() => toggleSetDone(i, sIdx)}
-                          >
-                            ✓
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <button className={styles.restSkipBtn} onClick={dismissRest}>Skip →</button>
             </div>
-          ))}
+          </div>
+        )}
+
+        <div className={styles.exercisesList}>
+          {day.exercises.map((ex, i) => {
+            const prevSets = previousData[ex.name];
+            return (
+              <div key={i} className={styles.exerciseCard}>
+                <div className={styles.exHeader}>
+                  <h3 className={styles.exTitle}>{ex.name}</h3>
+                  <span className={styles.exTarget}>Target: {ex.sets} Sets × {ex.reps} ({ex.rest} rest)</span>
+                </div>
+                
+                <div className={styles.setsTableWrap}>
+                  <table className={styles.setsTable}>
+                    <thead>
+                      <tr>
+                        <th>Set</th>
+                        <th className={styles.prevHeader}>Previous</th>
+                        <th>kg / lbs</th>
+                        <th>Reps</th>
+                        <th>Done</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(workoutData[i] || []).map((set, sIdx) => {
+                        const prev = prevSets?.[sIdx];
+                        const hasPrev = prev && (prev.weight || prev.reps);
+                        return (
+                          <tr key={sIdx} className={set.done ? styles.setRowDone : styles.setRow}>
+                            <td className={styles.setNumber}>{sIdx + 1}</td>
+                            <td className={styles.previousMeta}>
+                              {hasPrev ? (
+                                <button 
+                                  className={styles.prevFillBtn}
+                                  onClick={() => fillFromPrevious(i, sIdx, ex.name)}
+                                  title="Click to auto-fill"
+                                  disabled={set.done}
+                                >
+                                  {prev.weight}kg × {prev.reps}
+                                </button>
+                              ) : (
+                                <span className={styles.prevDash}>-</span>
+                              )}
+                            </td>
+                            <td>
+                              <input 
+                                className={styles.setVal} 
+                                placeholder="0" type="number" 
+                                value={set.weight}
+                                onChange={(e) => handleSetUpdate(i, sIdx, "weight", e.target.value)}
+                                disabled={set.done}
+                              />
+                            </td>
+                            <td>
+                              <input 
+                                className={set.done ? styles.setValDisabled : styles.setVal} 
+                                placeholder="0" type="number" 
+                                value={set.reps}
+                                onChange={(e) => handleSetUpdate(i, sIdx, "reps", e.target.value)}
+                                disabled={set.done}
+                              />
+                            </td>
+                            <td>
+                              <button 
+                                className={set.done ? styles.checkBtnDone : styles.checkBtn}
+                                onClick={() => toggleSetDone(i, sIdx, ex)}
+                              >
+                                ✓
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className={styles.workoutFooter}>

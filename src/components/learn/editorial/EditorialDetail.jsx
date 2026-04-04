@@ -9,7 +9,7 @@ import CommentSection from '../shared/CommentSection';
 export default function EditorialDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth(); // Firebase user — has user.uid
+  const { user } = useAuth();
 
   const [post, setPost]       = useState(null);
   const [loading, setLoading] = useState(true);

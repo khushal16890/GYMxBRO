@@ -257,6 +257,111 @@
   letter-spacing: -2px;
 }
 
+/* ===== REST TIMER BAR ===== */
+.restTimerBar {
+  background: rgba(232, 255, 71, 0.06);
+  border: 1px solid rgba(232, 255, 71, 0.2);
+  border-radius: 12px;
+  padding: 16px 24px;
+  margin-bottom: 24px;
+  animation: restFadeIn 0.3s ease;
+}
+
+@keyframes restFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.restTimerInner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.restTimerLabel {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: #e8ff47;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.restTimerCount {
+  font-family: 'DM Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: #f0f0f0;
+  min-width: 60px;
+}
+
+.restProgressTrack {
+  flex: 1;
+  height: 6px;
+  background: rgba(42, 42, 46, 0.8);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 100px;
+}
+
+.restProgressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #e8ff47, #d4eb30);
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+
+.restSkipBtn {
+  background: transparent;
+  border: 1px solid rgba(232, 255, 71, 0.3);
+  color: #e8ff47;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.restSkipBtn:hover {
+  background: rgba(232, 255, 71, 0.1);
+}
+
+/* ===== PREVIOUS SET FILL BUTTON ===== */
+.prevFillBtn {
+  background: transparent;
+  border: 1px dashed #2a2a2e;
+  color: #6b6b75;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.prevFillBtn:hover:not(:disabled) {
+  border-color: #e8ff47;
+  color: #e8ff47;
+  background: rgba(232, 255, 71, 0.06);
+}
+
+.prevFillBtn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.prevDash {
+  color: #4a4a55;
+  font-size: 13px;
+}
+
+
 .exercisesList {
   display: flex;
   flex-direction: column;
@@ -290,6 +395,7 @@
 
 .setsTableWrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .setsTable {
@@ -346,7 +452,7 @@
   outline: none;
 }
 
-.setVal:disabled {
+.setVal:disabled, .setValDisabled {
   background: transparent;
   border-color: transparent;
   color: #9999a8;
@@ -406,8 +512,45 @@
   box-shadow: 0 10px 40px rgba(232, 255, 71, 0.2);
 }
 
+/* ===== RESPONSIVE — TABLET ===== */
 @media (max-width: 768px) {
   .trackerHeader { flex-direction: column; align-items: flex-start; gap: 16px; }
   .timerBlock { align-self: flex-end; }
-  .setVal { width: 60px; padding: 8px; }
+  .timer { font-size: 36px; }
+  .trackerMeta h1 { font-size: 36px; }
+  .setVal { width: 64px; padding: 8px 6px; }
+  .setsTable th { padding: 10px 12px; font-size: 10px; }
+  .setRow td, .setRowDone td { padding: 10px 12px; }
+  .exHeader { padding: 16px; }
+  .exTitle { font-size: 22px; }
+  .dashTitle { font-size: 48px; }
+  .restTimerCount { font-size: 22px; }
+}
+
+/* ===== RESPONSIVE — PHONE ===== */
+@media (max-width: 480px) {
+  .container { padding: 20px 12px; }
+  .dashTitle { font-size: 36px; }
+  .calendarGrid { grid-template-columns: 1fr; gap: 12px; }
+  .trackerHeader { padding: 14px 16px; top: 10px; border-radius: 12px; }
+  .trackerMeta h1 { font-size: 28px; }
+  .timer { font-size: 28px; }
+
+  .setsTable th { padding: 8px 8px; font-size: 9px; }
+  .setRow td, .setRowDone td { padding: 8px 8px; }
+  .setVal { width: 52px; padding: 8px 4px; font-size: 13px; border-radius: 4px; }
+  .checkBtn, .checkBtnDone { width: 32px; height: 32px; font-size: 14px; }
+  .prevFillBtn { font-size: 10px; padding: 3px 5px; }
+
+  .restTimerInner { gap: 10px; }
+  .restTimerCount { font-size: 20px; min-width: auto; }
+  .restTimerBar { padding: 12px 14px; }
+
+  .exHeader { padding: 12px 14px; }
+  .exTitle { font-size: 20px; }
+  .exTarget { font-size: 11px; }
+  .exercisesList { gap: 20px; }
+
+  .finishBtn { width: 100%; padding: 14px; }
+  .workoutFooter { margin-top: 24px; }
 }

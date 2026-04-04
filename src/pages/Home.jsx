@@ -5,30 +5,26 @@ import "./Home.css";
 const stats = [
   { value: "800+", label: "Exercises" },
   { value: "AI", label: "Smart Planning" },
-  { value: "∞", label: "Custom Plans" },
-  { value: "0", label: "Excuses" },
+  { value: "100%", label: "Free Forever" },
+  { value: "24/7", label: "Access" },
 ];
 
 const features = [
   {
-    
     title: "AI Workout Plans",
-    desc: "Input your stats and goals — get a complete, personalized training plan in seconds. Built like a real coach would write it.",
+    desc: "Get a week-by-week program matched to your experience, schedule, and goals — generated in seconds. Just fill in your stats and go.",
   },
   {
-   
     title: "Manual Builder",
-    desc: "Full control. Search 800+ exercises, build your split day by day, set sets, reps and rest. Your plan, your rules.",
+    desc: "Full control. Search 800+ exercises, build your split day by day, set your own sets, reps and rest periods. Your programming, your rules.",
   },
   {
-   
     title: "Workout Tracker",
-    desc: "Log every set in real time. Built-in rest timer. Track your progress as you go — all inside your saved programs.",
+    desc: "Log every set in real time with a built-in rest timer and auto-fill from your last session. See previous weights so you never guess.",
   },
   {
-   
     title: "Exercise Library",
-    desc: "Browse 800+ exercises with GIFs, muscle targets, and tips. Filter by muscle group or equipment. Learn before you lift.",
+    desc: "Browse 800+ exercises with GIFs, muscle targets, and equipment info. Filter by muscle group or category. Know the movement before you do it.",
   },
 ];
 
