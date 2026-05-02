@@ -9,3 +9,4 @@ AI-Powered Plans: Generate optimized workout programs based on your fitness leve
 Exercise Database: Access a detailed library of exercises with proper form instructions and guidance.
 
 Learning Blogs: Stay informed with educational articles covering nutrition, recovery, and training science.
+.
